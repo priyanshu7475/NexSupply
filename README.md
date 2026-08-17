@@ -100,4 +100,4 @@ This project was prepared for the NPN SCM Hackathon by the Computer Science and 
 
 ## Project status
 
-The repository currently contains the frontend concept and project documentation. The deployed frontend link above is the primary way to explore the current prototype. The PDFs used as project and mentor reference material are intentionally not part of this README update or the project documentation flow.
+The repository currently contains the frontend concept and project documentation. The deployed frontend link above is the primary way to explore the current prototype.
