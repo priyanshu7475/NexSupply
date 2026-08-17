@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NexSupply — SmartSupply Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0d12;
+  --surface:#111520;
+  --card:#161c2d;
+  --border:#1e2a40;
+  --accent:#4f8ef7;
+  --accent2:#7c5cfc;
+  --green:#22c55e;
+  --amber:#f59e0b;
+  --red:#ef4444;
+  --text:#e8eaf0;
+  --muted:#6b7a99;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'Inter',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px;min-height:100vh}
+
+/* NAV */
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:56px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.nav-logo{font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
+.nav-tabs{display:flex;gap:4px}
+.nav-tab{padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--muted);border:none;background:transparent;transition:.15s}
+.nav-tab:hover{color:var(--text);background:var(--card)}
+.nav-tab.active{color:var(--accent);background:rgba(79,142,247,.1)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.status-pill{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--green);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:20px;padding:4px 10px}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.time-badge{font-size:12px;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:6px;padding:4px 10px}
+
+/* LAYOUT */
+.page{display:none;padding:1.5rem 2rem}
+.page.active{display:block}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.kpi-value{font-family:var(--font-display);font-size:26px;font-weight:700;color:var(--text);margin-bottom:4px}
+.kpi-delta{font-size:12px;display:flex;align-items:center;gap:4px}
+.up{color:var(--green)}.down{color:var(--red)}.neutral{color:var(--muted)}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.grid-13{display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:12px}
+.grid-21{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.card-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.card-title span{font-family:var(--font-display);font-size:14px;font-weight:600;color:var(--text);text-transform:none;letter-spacing:0}
+
+/* YARD MAP */
+.yard-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:12px}
+.yard-slot{height:44px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid transparent;cursor:default;transition:.15s}
+.yard-slot.occupied{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--red)}
+.yard-slot.available{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.2);color:var(--green)}
+.yard-slot.loading{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.3);color:var(--amber)}
+
+/* DOCK TABLE */
+.dock-table{width:100%;border-collapse:collapse}
+.dock-table th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.dock-table td{padding:9px 10px;border-bottom:1px solid rgba(30,42,64,.5);font-size:13px}
+.dock-table tr:last-child td{border-bottom:none}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.badge-green{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-red{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-amber{background:rgba(245,158,11,.15);color:var(--amber)}
+.badge-blue{background:rgba(79,142,247,.15);color:var(--accent)}
+
+/* TRUCK LIST */
+.truck-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(30,42,64,.5)}
+.truck-item:last-child{border-bottom:none}
+.truck-icon{width:36px;height:36px;border-radius:8px;background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.truck-info{flex:1}
+.truck-id{font-size:13px;font-weight:500;color:var(--text)}
+.truck-route{font-size:12px;color:var(--muted);margin-top:2px}
+.truck-eta{font-size:12px;font-weight:500;text-align:right}
+
+/* PROGRESS BAR */
+.progress-row{margin-bottom:10px}
+.progress-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px}
+.progress-track{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.fill-blue{background:var(--accent)}
+.fill-green{background:var(--green)}
+.fill-amber{background:var(--amber)}
+.fill-purple{background:var(--accent2)}
+
+/* ALERT */
+.alert-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid rgba(30,42,64,.5)}
+.alert-item:last-child{border-bottom:none}
+.alert-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.alert-text{font-size:13px;color:var(--text);line-height:1.5}
+.alert-time{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* PLANNING PAGE */
+.plan-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(30,42,64,.5)}
+.plan-row:last-child{border-bottom:none}
+.plan-week{font-size:12px;color:var(--muted);width:60px;flex-shrink:0}
+.plan-bar-wrap{flex:1;height:24px;background:var(--border);border-radius:4px;overflow:hidden;position:relative}
+.plan-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;color:#fff;transition:width .8s ease}
+.plan-label{font-size:12px;color:var(--muted);width:60px;text-align:right}
+
+/* SCENARIO CARD */
+.scenario-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s}
+.scenario-card:hover{border-color:var(--accent);background:rgba(79,142,247,.05)}
+.scenario-card.selected{border-color:var(--accent);background:rgba(79,142,247,.08)}
+.scenario-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px}
+.scenario-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.scenario-result{font-size:12px;color:var(--green);margin-top:6px;font-weight:500}
+
+/* CHART CONTAINER */
+.chart-wrap{position:relative;height:180px}
+.chart-wrap-lg{position:relative;height:240px}
+
+/* HERO SECTION FOR LANDING */
+.hero{background:linear-gradient(135deg,rgba(79,142,247,.08) 0%,rgba(124,92,252,.06) 100%);border:1px solid var(--border);border-radius:12px;padding:3rem 2.5rem;margin-bottom:1.5rem;text-align:center}
+.hero-label{font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+.hero-title{font-family:var(--font-display);font-size:42px;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:14px}
+.hero-sub{font-size:16px;color:var(--muted);max-width:560px;margin:0 auto 24px;line-height:1.6}
+.hero-btns{display:flex;gap:10px;justify-content:center}
+.btn-primary{padding:10px 24px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:.15s}
+.btn-primary:hover{background:#3d7de0}
+.btn-secondary{padding:10px 24px;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:.15s}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+
+/* PROBLEM GRID */
+.problem-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:1.5rem}
+.problem-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px}
+.problem-num{font-family:var(--font-display);font-size:32px;font-weight:700;color:rgba(239,68,68,.2);margin-bottom:8px}
+.problem-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px}
+.problem-desc{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* SOLUTION GRID */
+.solution-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem}
+.solution-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;border-top:2px solid var(--accent)}
+.solution-icon{font-size:24px;margin-bottom:10px}
+.solution-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px}
+.solution-desc{font-size:13px;color:var(--muted);line-height:1.6}
+
+/* SECTION HEADER */
+.section-header{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--text);margin-bottom:6px}
+.section-sub{font-size:14px;color:var(--muted);margin-bottom:1.25rem}
+
+/* TEAM */
+.team-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.team-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
+.team-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;font-size:14px;color:#fff;margin:0 auto 10px}
+.team-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px}
+.team-role{font-size:11px;color:var(--muted)}
+.leader-badge{font-size:10px;background:rgba(79,142,247,.15);color:var(--accent);border-radius:20px;padding:2px 7px;margin-top:5px;display:inline-block}
+
+@media(max-width:768px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .grid-2,.grid-3,.grid-13,.grid-21{grid-template-columns:1fr}
+  .team-grid{grid-template-columns:repeat(2,1fr)}
+  .solution-grid{grid-template-columns:1fr}
+  .hero-title{font-size:28px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><span class="logo-dot"></span> NexSupply</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('overview')">Overview</button>
+    <button class="nav-tab" onclick="showPage('dashboard')">Live Dashboard</button>
+    <button class="nav-tab" onclick="showPage('planning')">S&OP Planning</button>
+    <button class="nav-tab" onclick="showPage('team')">Team</button>
+  </div>
+  <div class="nav-right">
+    <div class="status-pill"><span class="pulse"></span> Live</div>
+    <div class="time-badge" id="clock">--:--:--</div>
+  </div>
+</nav>
+
+<!-- OVERVIEW PAGE -->
+<div class="page active" id="page-overview">
+  <div style="max-width:960px;margin:0 auto;padding-top:1rem">
+    <div class="hero">
+      <div class="hero-label">NPN SCM Hackathon — E2 + P2</div>
+      <div class="hero-title">SmartSupply Command Center</div>
+      <div class="hero-sub">Closing the gap between planning and execution. Real-time truck tracking, automated yard management, and integrated S&OP — unified in one platform.</div>
+      <div class="hero-btns">
+        <button class="btn-primary" onclick="showPage('dashboard')">View Live Dashboard</button>
+        <button class="btn-secondary" onclick="showPage('planning')">S&OP Planning</button>
+      </div>
+    </div>
+
+    <div class="section-header">The Problem</div>
+    <div class="section-sub">Two critical gaps are slowing supply chain operations every single day.</div>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="problem-num">E2</div>
+        <div class="problem-title">Where's My Truck?</div>
+        <div class="problem-desc">Warehouse managers are left in the dark about truck locations, estimated arrival times, and dock door assignments — leading to reactive decisions and constant uncertainty. Manual scheduling wastes 20+ hours per week.</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">P2</div>
+        <div class="problem-title">Planning in a Vacuum</div>
+        <div class="problem-desc">Demand forecasts are created without live execution constraints. Seasonal spikes cause chaos, manual replanning takes days, and there is no visibility between what was planned and what is actually happening on the ground.</div>
+      </div>
+    </div>
+
+    <div class="section-header">Our Solution</div>
+    <div class="section-sub">SmartSupply Command Center — bidirectional integration between planning and execution.</div>
+    <div class="solution-grid">
+      <div class="solution-card">
+        <div class="solution-icon">🚛</div>
+        <div class="solution-title">E2 Execution Module</div>
+        <div class="solution-desc">Real-time truck scheduling, automated yard allocation, and live operational visibility across all facilities and fleets.</div>
+      </div>
+      <div class="solution-card">
+        <div class="solution-icon">📊</div>
+        <div class="solution-title">P2 Planning Module</div>
+        <div class="solution-desc">Demand forecasting fully integrated with execution constraints — dock capacity, truck availability, and yard space baked into every single plan.</div>
+      </div>
+      <div class="solution-card">
+        <div class="solution-icon">⚡</div>
+        <div class="solution-title">Bidirectional Integration</div>
+        <div class="solution-desc">Execution data automatically reshapes plans in real-time. When a dock goes offline or a truck is delayed, the plan knows instantly.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>Impact Metrics</span></div>
+      <div class="grid-3" style="margin-bottom:0">
+        <div style="text-align:center;padding:1rem">
+          <div style="font-family:var(--font-display);font-size:36px;font-weight:700;color:var(--green)">+25%</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">Operational efficiency across sites</div>
+        </div>
+        <div style="text-align:center;padding:1rem;border-left:1px solid var(--border);border-right:1px solid var(--border)">
+          <div style="font-family:var(--font-display);font-size:36px;font-weight:700;color:var(--accent)">99%</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">Uptime in pilot deployment</div>
+        </div>
+        <div style="text-align:center;padding:1rem">
+          <div style="font-family:var(--font-display);font-size:36px;font-weight:700;color:var(--accent2)">3×</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">Faster scenario replanning</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div class="page" id="page-dashboard">
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Active Trucks</div>
+      <div class="kpi-value">24</div>
+      <div class="kpi-delta up">↑ 3 since morning</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Dock Utilization</div>
+      <div class="kpi-value">78%</div>
+      <div class="kpi-delta up">↑ 12% vs yesterday</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Yard Occupancy</div>
+      <div class="kpi-value">62%</div>
+      <div class="kpi-delta neutral">→ On track</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Avg Wait Time</div>
+      <div class="kpi-value">14m</div>
+      <div class="kpi-delta down">↓ 8m vs last week</div>
+    </div>
+  </div>
+
+  <div class="grid-21">
+    <div class="card">
+      <div class="card-title">Yard Map — Bay A</div>
+      <div class="yard-grid">
+        <div class="yard-slot occupied">A1 🚛</div>
+        <div class="yard-slot occupied">A2 🚛</div>
+        <div class="yard-slot available">A3</div>
+        <div class="yard-slot loading">A4 ⟳</div>
+        <div class="yard-slot available">A5</div>
+        <div class="yard-slot occupied">A6 🚛</div>
+        <div class="yard-slot available">B1</div>
+        <div class="yard-slot occupied">B2 🚛</div>
+        <div class="yard-slot loading">B3 ⟳</div>
+        <div class="yard-slot available">B4</div>
+        <div class="yard-slot occupied">B5 🚛</div>
+        <div class="yard-slot occupied">B6 🚛</div>
+        <div class="yard-slot available">C1</div>
+        <div class="yard-slot available">C2</div>
+        <div class="yard-slot occupied">C3 🚛</div>
+        <div class="yard-slot loading">C4 ⟳</div>
+        <div class="yard-slot available">C5</div>
+        <div class="yard-slot occupied">C6 🚛</div>
+      </div>
+      <div style="display:flex;gap:14px;font-size:12px;color:var(--muted)">
+        <span style="color:var(--green)">■ Available (8)</span>
+        <span style="color:var(--red)">■ Occupied (7)</span>
+        <span style="color:var(--amber)">■ Loading (3)</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Live Alerts</div>
+      <div class="alert-item">
+        <div class="alert-dot" style="background:var(--red)"></div>
+        <div><div class="alert-text">Truck TN-2847 delayed — 22 min ETA update</div><div class="alert-time">2 min ago</div></div>
+      </div>
+      <div class="alert-item">
+        <div class="alert-dot" style="background:var(--amber)"></div>
+        <div><div class="alert-text">Dock D-07 approaching capacity limit</div><div class="alert-time">8 min ago</div></div>
+      </div>
+      <div class="alert-item">
+        <div class="alert-dot" style="background:var(--green)"></div>
+        <div><div class="alert-text">Truck MH-1134 arrived — Bay C3 assigned</div><div class="alert-time">14 min ago</div></div>
+      </div>
+      <div class="alert-item">
+        <div class="alert-dot" style="background:var(--accent)"></div>
+        <div><div class="alert-text">S&OP plan auto-updated due to dock constraint</div><div class="alert-time">31 min ago</div></div>
+      </div>
+      <div class="alert-item">
+        <div class="alert-dot" style="background:var(--amber)"></div>
+        <div><div class="alert-text">Seasonal demand spike detected — Q3 apparel</div><div class="alert-time">1 hr ago</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span>Dock Door Status</span></div>
+      <table class="dock-table">
+        <thead><tr><th>Dock</th><th>Truck</th><th>Action</th><th>ETA</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>D-01</td><td>TN-2847</td><td>Unload</td><td>+22m</td><td><span class="badge badge-amber">Delayed</span></td></tr>
+          <tr><td>D-02</td><td>MH-1134</td><td>Load</td><td>Now</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>D-03</td><td>—</td><td>—</td><td>—</td><td><span class="badge badge-blue">Open</span></td></tr>
+          <tr><td>D-04</td><td>KA-0092</td><td>Unload</td><td>+5m</td><td><span class="badge badge-green">Active</span></td></tr>
+          <tr><td>D-05</td><td>GJ-5531</td><td>Load</td><td>+45m</td><td><span class="badge badge-amber">Incoming</span></td></tr>
+          <tr><td>D-06</td><td>—</td><td>—</td><td>—</td><td><span class="badge badge-blue">Open</span></td></tr>
+          <tr><td>D-07</td><td>RJ-2290</td><td>Unload</td><td>Now</td><td><span class="badge badge-red">Full</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Truck Fleet Status</span></div>
+      <div class="truck-item">
+        <div class="truck-icon">🚛</div>
+        <div class="truck-info"><div class="truck-id">TN-2847</div><div class="truck-route">Chennai → Facility A · Apparel Load</div></div>
+        <div class="truck-eta" style="color:var(--amber)">+22m</div>
+      </div>
+      <div class="truck-item">
+        <div class="truck-icon">🚛</div>
+        <div class="truck-info"><div class="truck-id">MH-1134</div><div class="truck-route">Mumbai → Facility B · Electronics</div></div>
+        <div class="truck-eta" style="color:var(--green)">Arrived</div>
+      </div>
+      <div class="truck-item">
+        <div class="truck-icon">🚛</div>
+        <div class="truck-info"><div class="truck-id">KA-0092</div><div class="truck-route">Bangalore → Facility A · FMCG</div></div>
+        <div class="truck-eta" style="color:var(--green)">+5m</div>
+      </div>
+      <div class="truck-item">
+        <div class="truck-icon">🚛</div>
+        <div class="truck-info"><div class="truck-id">GJ-5531</div><div class="truck-route">Surat → Facility C · Apparel</div></div>
+        <div class="truck-eta" style="color:var(--muted)">+45m</div>
+      </div>
+      <div class="truck-item">
+        <div class="truck-icon">🚛</div>
+        <div class="truck-info"><div class="truck-id">RJ-2290</div><div class="truck-route">Jaipur → Facility B · Textiles</div></div>
+        <div class="truck-eta" style="color:var(--green)">Arrived</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-13">
+    <div class="card">
+      <div class="card-title"><span>Dock Throughput</span></div>
+      <div class="progress-row"><div class="progress-label"><span>D-01 TN-2847</span><span>Delayed</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:45%"></div></div></div>
+      <div class="progress-row"><div class="progress-label"><span>D-02 MH-1134</span><span>100%</span></div><div class="progress-track"><div class="progress-fill fill-green" style="width:100%"></div></div></div>
+      <div class="progress-row"><div class="progress-label"><span>D-04 KA-0092</span><span>85%</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:85%"></div></div></div>
+      <div class="progress-row"><div class="progress-label"><span>D-05 GJ-5531</span><span>20%</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:20%"></div></div></div>
+      <div class="progress-row"><div class="progress-label"><span>D-07 RJ-2290</span><span>Full</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:100%"></div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Hourly Truck Arrivals</span></div>
+      <div class="chart-wrap"><canvas id="arrivalChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- PLANNING PAGE -->
+<div class="page" id="page-planning">
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Forecast Accuracy</div>
+      <div class="kpi-value">91%</div>
+      <div class="kpi-delta up">↑ 4% vs last quarter</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Plan vs Actual</div>
+      <div class="kpi-value">96%</div>
+      <div class="kpi-delta up">↑ Aligned</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Replanning Time</div>
+      <div class="kpi-value">~4s</div>
+      <div class="kpi-delta up">↓ from 2–3 days</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Active SKUs</div>
+      <div class="kpi-value">1,284</div>
+      <div class="kpi-delta neutral">→ Trend Wear Apparel</div>
+    </div>
+  </div>
+
+  <div class="grid-21">
+    <div class="card">
+      <div class="card-title"><span>Demand Forecast — Next 12 Weeks</span></div>
+      <div class="chart-wrap-lg"><canvas id="demandChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>What-If Scenarios</span></div>
+      <div class="scenario-card selected" onclick="selectScenario(this,'Baseline: +10% efficiency, no disruptions.')">
+        <div class="scenario-title">Baseline Plan</div>
+        <div class="scenario-desc">Current constraints — dock capacity 80%, 24 trucks active, normal demand.</div>
+        <div class="scenario-result">✓ Result: On track. ETA met for 96% of shipments.</div>
+      </div>
+      <div class="scenario-card" onclick="selectScenario(this,'Demand surge scenario: need 8 extra trucks and 3 dock slots. Replanning in 4s.')">
+        <div class="scenario-title">Demand Surge +30%</div>
+        <div class="scenario-desc">Simulate a seasonal spike in apparel demand — Q3 trend collection drop.</div>
+        <div class="scenario-result">⚡ Replanning triggered. 8 extra trucks needed.</div>
+      </div>
+      <div class="scenario-card" onclick="selectScenario(this,'Dock disruption: 2 docks offline. Rerouting 6 trucks to Facility B. Delay: +18 mins avg.')">
+        <div class="scenario-title">Dock Disruption</div>
+        <div class="scenario-desc">2 dock doors go offline. Simulate impact on throughput and rerouting options.</div>
+        <div class="scenario-result">⚠ 6 trucks rerouted. Avg delay +18 min.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="scenario-output" style="display:none" class="card" style="margin-bottom:12px">
+    <div class="card-title"><span>Scenario Result</span></div>
+    <div id="scenario-text" style="font-size:14px;color:var(--text);line-height:1.6;padding:6px 0"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span>Weekly S&OP Plan — Units</span></div>
+      <div class="plan-row"><div class="plan-week">Wk 1</div><div class="plan-bar-wrap"><div class="plan-bar fill-blue" style="width:60%">12,400</div></div><div class="plan-label">On track</div></div>
+      <div class="plan-row"><div class="plan-week">Wk 2</div><div class="plan-bar-wrap"><div class="plan-bar fill-blue" style="width:72%">14,800</div></div><div class="plan-label">On track</div></div>
+      <div class="plan-row"><div class="plan-week">Wk 3</div><div class="plan-bar-wrap"><div class="plan-bar fill-amber" style="width:90%">18,500</div></div><div class="plan-label">At limit</div></div>
+      <div class="plan-row"><div class="plan-week">Wk 4</div><div class="plan-bar-wrap"><div class="plan-bar" style="width:85%;background:var(--accent2)">17,200</div></div><div class="plan-label">Adjusted</div></div>
+      <div class="plan-row"><div class="plan-week">Wk 5</div><div class="plan-bar-wrap"><div class="plan-bar fill-blue" style="width:68%">14,000</div></div><div class="plan-label">On track</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span>Supply vs Demand Balance</span></div>
+      <div class="chart-wrap-lg"><canvas id="balanceChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- TEAM PAGE -->
+<div class="page" id="page-team">
+  <div style="max-width:800px;margin:0 auto;padding-top:1rem">
+    <div class="section-header">Team — Academy of Technology</div>
+    <div class="section-sub">Computer Science and Business Systems · NPN SCM Hackathon 2025</div>
+    <div class="team-grid" style="margin-bottom:1.5rem">
+      <div class="team-card">
+        <div class="team-avatar">PK</div>
+        <div class="team-name">Priyanshu Kumar</div>
+        <div class="team-role">Frontend & ML</div>
+        <div class="leader-badge">Team Leader</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">TP</div>
+        <div class="team-name">Tushar Paul</div>
+        <div class="team-role">Full-Stack Dev</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">SS</div>
+        <div class="team-name">Souvik Sinha</div>
+        <div class="team-role">Backend & DB</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">SK</div>
+        <div class="team-name">Supratik Sarkar</div>
+        <div class="team-role">Architecture</div>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar">RJ</div>
+        <div class="team-name">Raj Jaiswal</div>
+        <div class="team-role">Data & Planning</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>Project: SmartSupply Command Center</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:6px">
+        <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Problem Statement</div><div style="font-size:13px;color:var(--text)">Where's My Truck? + Integrated S&OP for Trend Wear Apparel</div></div>
+        <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Project Combination</div><div style="font-size:13px;color:var(--text)">E2 + P2</div></div>
+        <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Institute</div><div style="font-size:13px;color:var(--text)">Academy of Technology, Hooghly</div></div>
+        <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Mentors</div><div style="font-size:13px;color:var(--text)">Prathamesh Adawade, Jain, Ratan</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const tabs=['overview','dashboard','planning','team'];
+  document.querySelectorAll('.nav-tab')[tabs.indexOf(id)].classList.add('active');
+  if(id==='dashboard')initDashboardCharts();
+  if(id==='planning')initPlanningCharts();
+}
+
+function selectScenario(el,result){
+  document.querySelectorAll('.scenario-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  const out=document.getElementById('scenario-output');
+  document.getElementById('scenario-text').textContent=result;
+  out.style.display='block';
+}
+
+let dashInit=false,planInit=false;
+
+function initDashboardCharts(){
+  if(dashInit)return;dashInit=true;
+  const ctx=document.getElementById('arrivalChart').getContext('2d');
+  new Chart(ctx,{type:'bar',data:{labels:['06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00'],datasets:[{label:'Trucks',data:[2,3,5,8,6,4,7,5,3],backgroundColor:'rgba(79,142,247,0.6)',borderColor:'rgba(79,142,247,1)',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(30,42,64,0.8)'},ticks:{color:'#6b7a99',font:{size:11}}},y:{grid:{color:'rgba(30,42,64,0.8)'},ticks:{color:'#6b7a99',font:{size:11}}}}}});
+}
+
+function initPlanningCharts(){
+  if(planInit)return;planInit=true;
+  const ctx1=document.getElementById('demandChart').getContext('2d');
+  new Chart(ctx1,{type:'line',data:{labels:['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'],datasets:[{label:'Forecast',data:[12400,14800,18500,17200,14000,15600,19200,21000,18400,16200,14800,13500],borderColor:'rgba(79,142,247,1)',backgroundColor:'rgba(79,142,247,0.1)',tension:.4,fill:true,pointRadius:3},{label:'Capacity',data:[20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000],borderColor:'rgba(239,68,68,0.5)',borderDash:[5,5],tension:0,fill:false,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#6b7a99',font:{size:11}}}},scales:{x:{grid:{color:'rgba(30,42,64,0.8)'},ticks:{color:'#6b7a99',font:{size:11}}},y:{grid:{color:'rgba(30,42,64,0.8)'},ticks:{color:'#6b7a99',font:{size:11}}}}}});
+  const ctx2=document.getElementById('balanceChart').getContext('2d');
+  new Chart(ctx2,{type:'bar',data:{labels:['W1','W2','W3','W4','W5'],datasets:[{label:'Supply',data:[13000,15500,19000,18000,14500],backgroundColor:'rgba(34,197,94,0.6)',borderRadius:4},{label:'Demand',data:[12400,14800,18500,17200,14000],backgroundColor:'rgba(79,142,247,0.6)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#6b7a99',font:{size:11}}}},scales:{x:{grid:{color:'rgba(30,42,64,0.8)'},ticks:{color:'#6b7a99',font:{size:11}}},y:{grid:{color:'rgba(30,42,64,0.8)'},ticks:{color:'#6b7a99',font:{size:11}}}}}});
+}
+
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clock').textContent=now.toLocaleTimeString('en-IN',{hour12:false});
+}
+setInterval(updateClock,1000);
+updateClock();
+</script>
+</body>
+</html>
