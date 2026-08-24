@@ -261,17 +261,17 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem
   <div class="kpi-row">
     <div class="kpi">
       <div class="kpi-label">Active Trucks</div>
-      <div class="kpi-value">24</div>
+      <div class="kpi-value" id="activeTrucks">24</div>
       <div class="kpi-delta up">↑ 3 since morning</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Dock Utilization</div>
-      <div class="kpi-value">78%</div>
+      <div class="kpi-value" id="dockUtilization">78%</div>
       <div class="kpi-delta up">↑ 12% vs yesterday</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Yard Occupancy</div>
-      <div class="kpi-value">62%</div>
+      <div class="kpi-value" id="yardUtilization">62%</div>
       <div class="kpi-delta neutral">→ On track</div>
     </div>
     <div class="kpi">
@@ -555,6 +555,32 @@ function updateClock(){
 }
 setInterval(updateClock,1000);
 updateClock();
+async function loadDashboardKPIs() {
+    try {
+        const response = await fetch("http://localhost:5000/api/dashboard/kpis");
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch dashboard KPIs");
+        }
+
+        const data = await response.json();
+
+        document.getElementById("activeTrucks").textContent =
+            data.activeTrucks;
+
+        document.getElementById("dockUtilization").textContent =
+            `${data.dockUtilization}%`;
+
+        document.getElementById("yardUtilization").textContent =
+            `${data.yardUtilization}%`;
+
+    } catch (error) {
+        console.error("Dashboard KPI error:", error);
+    }
+}
+
+loadDashboardKPIs();
+setInterval(loadDashboardKPIs, 30000);
 </script>
 </body>
 </html>
