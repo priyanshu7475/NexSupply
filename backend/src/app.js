@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 
+const dashboardRoutes = require("./routes/dashboardRoutes");
+
 const app = express();
 
 app.use(cors());
@@ -11,5 +13,7 @@ app.get("/", (req, res) => {
         message: "NexSupply API is running"
     });
 });
+
+app.use("/api/dashboard", dashboardRoutes);
 
 module.exports = app;
