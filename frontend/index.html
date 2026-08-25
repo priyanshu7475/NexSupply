@@ -349,30 +349,16 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem
     </div>
     <div class="card">
       <div class="card-title"><span>Truck Fleet Status</span></div>
-      <div class="truck-item">
-        <div class="truck-icon">🚛</div>
-        <div class="truck-info"><div class="truck-id">TN-2847</div><div class="truck-route">Chennai → Facility A · Apparel Load</div></div>
-        <div class="truck-eta" style="color:var(--amber)">+22m</div>
-      </div>
-      <div class="truck-item">
-        <div class="truck-icon">🚛</div>
-        <div class="truck-info"><div class="truck-id">MH-1134</div><div class="truck-route">Mumbai → Facility B · Electronics</div></div>
-        <div class="truck-eta" style="color:var(--green)">Arrived</div>
-      </div>
-      <div class="truck-item">
-        <div class="truck-icon">🚛</div>
-        <div class="truck-info"><div class="truck-id">KA-0092</div><div class="truck-route">Bangalore → Facility A · FMCG</div></div>
-        <div class="truck-eta" style="color:var(--green)">+5m</div>
-      </div>
-      <div class="truck-item">
-        <div class="truck-icon">🚛</div>
-        <div class="truck-info"><div class="truck-id">GJ-5531</div><div class="truck-route">Surat → Facility C · Apparel</div></div>
-        <div class="truck-eta" style="color:var(--muted)">+45m</div>
-      </div>
-      <div class="truck-item">
-        <div class="truck-icon">🚛</div>
-        <div class="truck-info"><div class="truck-id">RJ-2290</div><div class="truck-route">Jaipur → Facility B · Textiles</div></div>
-        <div class="truck-eta" style="color:var(--green)">Arrived</div>
+
+      <div id="truckFleetList">
+        <div class="truck-item">
+          <div class="truck-icon">🚛</div>
+          <div class="truck-info">
+            <div class="truck-id">Loading...</div>
+            <div class="truck-route">Fetching truck data...</div>
+          </div>
+          <div class="truck-eta">...</div>
+        </div>
       </div>
     </div>
   </div>
@@ -662,6 +648,98 @@ async function loadDockStatus() {
 }
 
 loadDockStatus();
+async function loadTruckStatus() {
+  try {
+    const response = await fetch("http://localhost:5000/api/trucks/status");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch truck status");
+    }
+
+    const trucks = await response.json();
+
+    const container = document.getElementById("truckFleetList");
+
+    container.innerHTML = "";
+
+    trucks.forEach(truck => {
+      let statusText;
+      let statusColor;
+
+      switch (truck.truck_status) {
+        case "IN_TRANSIT":
+          statusText = "In Transit";
+          statusColor = "var(--amber)";
+          break;
+
+        case "ARRIVED":
+          statusText = "Arrived";
+          statusColor = "var(--green)";
+          break;
+
+        case "SCHEDULED":
+          statusText = "Scheduled";
+          statusColor = "var(--muted)";
+          break;
+
+        default:
+          statusText = truck.truck_status || "Unknown";
+          statusColor = "var(--muted)";
+      }
+
+      const truckId =
+        `TRK-${String(truck.truck_id).padStart(3, "0")}`;
+
+      const shipment =
+        truck.shipment_reference || "No shipment assigned";
+
+      const eta = truck.eta
+        ? new Date(truck.eta).toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+          })
+        : "—";
+
+      const item = document.createElement("div");
+
+      item.className = "truck-item";
+
+      item.innerHTML = `
+        <div class="truck-icon">🚛</div>
+
+        <div class="truck-info">
+          <div class="truck-id">${truckId}</div>
+          <div class="truck-route">
+            Shipment ${shipment} · ${truck.truck_status}
+          </div>
+        </div>
+
+        <div class="truck-eta" style="color:${statusColor}">
+          ${statusText === "Arrived" ? "Arrived" : eta}
+        </div>
+      `;
+
+      container.appendChild(item);
+    });
+
+  } catch (error) {
+    console.error("Truck status error:", error);
+
+    document.getElementById("truckFleetList").innerHTML = `
+      <div class="truck-item">
+        <div class="truck-icon">⚠️</div>
+        <div class="truck-info">
+          <div class="truck-id">Unable to load trucks</div>
+          <div class="truck-route">Backend connection error</div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+loadTruckStatus();
+setInterval(loadTruckStatus, 30000);
 setInterval(loadDockStatus, 30000);
 setInterval(loadDashboardKPIs, 30000);
 </script>

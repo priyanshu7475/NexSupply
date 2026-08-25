@@ -1,3 +1,4 @@
+const truckRoute = require("./routes/truckRoute");
 const express = require("express");
 const cors = require("cors");
 
@@ -17,5 +18,6 @@ app.get("/", (req, res) => {
 
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/docks", dockRoute);
+app.use("/api/trucks", truckRoute);
 
 module.exports = app;
