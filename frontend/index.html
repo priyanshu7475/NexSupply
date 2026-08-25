@@ -340,14 +340,10 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem
       <div class="card-title"><span>Dock Door Status</span></div>
       <table class="dock-table">
         <thead><tr><th>Dock</th><th>Truck</th><th>Action</th><th>ETA</th><th>Status</th></tr></thead>
-        <tbody>
-          <tr><td>D-01</td><td>TN-2847</td><td>Unload</td><td>+22m</td><td><span class="badge badge-amber">Delayed</span></td></tr>
-          <tr><td>D-02</td><td>MH-1134</td><td>Load</td><td>Now</td><td><span class="badge badge-green">Active</span></td></tr>
-          <tr><td>D-03</td><td>—</td><td>—</td><td>—</td><td><span class="badge badge-blue">Open</span></td></tr>
-          <tr><td>D-04</td><td>KA-0092</td><td>Unload</td><td>+5m</td><td><span class="badge badge-green">Active</span></td></tr>
-          <tr><td>D-05</td><td>GJ-5531</td><td>Load</td><td>+45m</td><td><span class="badge badge-amber">Incoming</span></td></tr>
-          <tr><td>D-06</td><td>—</td><td>—</td><td>—</td><td><span class="badge badge-blue">Open</span></td></tr>
-          <tr><td>D-07</td><td>RJ-2290</td><td>Unload</td><td>Now</td><td><span class="badge badge-red">Full</span></td></tr>
+        <tbody id="dockStatusBody">
+          <tr>
+            <td colspan="5">Loading dock status...</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -580,6 +576,93 @@ async function loadDashboardKPIs() {
 }
 
 loadDashboardKPIs();
+async function loadDockStatus() {
+  try {
+    const response = await fetch("http://localhost:5000/api/docks/status");
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch dock status");
+    }
+
+    const docks = await response.json();
+
+    const tbody = document.getElementById("dockStatusBody");
+
+    tbody.innerHTML = "";
+
+    docks.forEach(dock => {
+      let statusText;
+      let badgeClass;
+
+      switch (dock.dock_status) {
+        case "OCCUPIED":
+          statusText = "Active";
+          badgeClass = "badge-green";
+          break;
+
+        case "AVAILABLE":
+          statusText = "Open";
+          badgeClass = "badge-blue";
+          break;
+
+        case "MAINTENANCE":
+          statusText = "Maintenance";
+          badgeClass = "badge-red";
+          break;
+
+        default:
+          statusText = dock.dock_status || "Unknown";
+          badgeClass = "badge-amber";
+      }
+
+      const truck = dock.truck_id
+        ? `TRK-${String(dock.truck_id).padStart(3, "0")}`
+        : "—";
+
+      const shipment = dock.shipment_reference || "—";
+
+      const action = dock.truck_id
+        ? (dock.shipment_status === "ARRIVED" ? "Load" : "Unload")
+        : "—";
+
+      const eta = dock.scheduled_arrival
+        ? new Date(dock.scheduled_arrival).toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+          })
+        : "—";
+
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td>${dock.dock_number}</td>
+        <td>${truck}</td>
+        <td>${action}</td>
+        <td>${eta}</td>
+        <td>
+          <span class="badge ${badgeClass}">
+            ${statusText}
+          </span>
+        </td>
+      `;
+
+      tbody.appendChild(row);
+    });
+
+  } catch (error) {
+    console.error("Dock status error:", error);
+
+    document.getElementById("dockStatusBody").innerHTML = `
+      <tr>
+        <td colspan="5">Unable to load dock status</td>
+      </tr>
+    `;
+  }
+}
+
+loadDockStatus();
+setInterval(loadDockStatus, 30000);
 setInterval(loadDashboardKPIs, 30000);
 </script>
 </body>

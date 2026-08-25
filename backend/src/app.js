@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const dockRoute = require("./routes/dockRoute");
 
 const app = express();
 
@@ -15,5 +16,6 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/docks", dockRoute);
 
 module.exports = app;
