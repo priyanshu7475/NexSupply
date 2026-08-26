@@ -5,6 +5,7 @@ const cors = require("cors");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const dockRoute = require("./routes/dockRoute");
 const alertRoute = require("./routes/alertRoute");
+const yardRoute = require("./routes/yardRoute");
 
 const app = express();
 
@@ -21,5 +22,6 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/docks", dockRoute);
 app.use("/api/trucks", truckRoute);
 app.use("/api/alerts", alertRoute);
+app.use("/api/yard", yardRoute);
 
 module.exports = app;
