@@ -284,14 +284,16 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem
   <div class="grid-21">
     <div class="card">
       <div class="card-title">Yard Map — Bay A</div>
-      <div class="yard-grid" id="yardGrid">
+
+<div class="yard-grid" id="yardGrid">
     <div class="yard-slot available">Loading...</div>
 </div>
-      <div style="display:flex;gap:14px;font-size:12px;color:var(--muted)">
-        <span style="color:var(--green)">■ Available (8)</span>
-        <span style="color:var(--red)">■ Occupied (7)</span>
-        <span style="color:var(--amber)">■ Loading (3)</span>
-      </div>
+
+<div style="display:flex;gap:14px;font-size:12px;color:var(--muted)">
+    <span style="color:var(--green)">■ Available</span>
+    <span style="color:var(--red)">■ Occupied</span>
+    <span style="color:var(--amber)">■ Full</span>
+</div>
     </div>
     <div class="card">
   <div class="card-title">
@@ -892,10 +894,10 @@ async function loadAlerts() {
 }
 async function loadYardStatus() {
   try {
-    const response = await fetch("http://localhost:5000/api/yard");
+    const response = await fetch("http://localhost:5000/api/yard/");
 
     if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
+      throw new Error("Failed to fetch yard status");
     }
 
     const yards = await response.json();
@@ -904,55 +906,37 @@ async function loadYardStatus() {
 
     container.innerHTML = "";
 
-    const slotGroups = [
-      ["A1", "A2", "A3"],
-      ["A4", "A5", "A6"],
-      ["B1", "B2", "B3"],
-      ["B4", "B5", "B6"],
-      ["C1", "C2", "C3"],
-      ["C4", "C5", "C6"]
-    ];
+    yards.forEach(yard => {
 
-    yards.forEach((yard, index) => {
+      let statusClass;
 
-      const slots = slotGroups[index];
+      switch (yard.status) {
+        case "AVAILABLE":
+          statusClass = "available";
+          break;
 
-      const occupancyRate =
-        yard.capacity > 0
-          ? yard.occupancy / yard.capacity
-          : 0;
+        case "OCCUPIED":
+          statusClass = "occupied";
+          break;
 
-      let occupiedSlots = Math.round(occupancyRate * 3);
+        case "FULL":
+          statusClass = "loading";
+          break;
 
-      if (yard.status === "FULL") {
-        occupiedSlots = 3;
+        default:
+          statusClass = "available";
       }
 
-      slots.forEach((slotName, slotIndex) => {
+      const slot = document.createElement("div");
 
-        const slot = document.createElement("div");
+      slot.className = `yard-slot ${statusClass}`;
 
-        let statusClass;
-        let icon = "";
+      slot.innerHTML = `
+        <strong>${yard.location_name}</strong>
+        <span>${yard.occupancy}/${yard.capacity}</span>
+      `;
 
-        if (slotIndex < occupiedSlots) {
-          statusClass = "occupied";
-          icon = " 🚛";
-        } else {
-          statusClass = "available";
-        }
-
-        slot.className = `yard-slot ${statusClass}`;
-
-        slot.textContent = `${slotName}${icon}`;
-
-        slot.title =
-          `${yard.location_name} | ` +
-          `${yard.occupancy}/${yard.capacity} occupied | ` +
-          `${yard.status}`;
-
-        container.appendChild(slot);
-      });
+      container.appendChild(slot);
     });
 
   } catch (error) {
@@ -965,7 +949,8 @@ async function loadYardStatus() {
       </div>
     `;
   }
-} 
+}
+
 loadYardStatus();
 loadAlerts();
 
