@@ -311,28 +311,21 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Live Alerts</div>
-      <div class="alert-item">
-        <div class="alert-dot" style="background:var(--red)"></div>
-        <div><div class="alert-text">Truck TN-2847 delayed — 22 min ETA update</div><div class="alert-time">2 min ago</div></div>
-      </div>
-      <div class="alert-item">
-        <div class="alert-dot" style="background:var(--amber)"></div>
-        <div><div class="alert-text">Dock D-07 approaching capacity limit</div><div class="alert-time">8 min ago</div></div>
-      </div>
-      <div class="alert-item">
-        <div class="alert-dot" style="background:var(--green)"></div>
-        <div><div class="alert-text">Truck MH-1134 arrived — Bay C3 assigned</div><div class="alert-time">14 min ago</div></div>
-      </div>
-      <div class="alert-item">
-        <div class="alert-dot" style="background:var(--accent)"></div>
-        <div><div class="alert-text">S&OP plan auto-updated due to dock constraint</div><div class="alert-time">31 min ago</div></div>
-      </div>
-      <div class="alert-item">
-        <div class="alert-dot" style="background:var(--amber)"></div>
-        <div><div class="alert-text">Seasonal demand spike detected — Q3 apparel</div><div class="alert-time">1 hr ago</div></div>
+  <div class="card-title">
+    <span>Live Alerts</span>
+  </div>
+
+  <div id="alertsList">
+    <div class="alert-item">
+      <div class="alert-dot" style="background:var(--muted)"></div>
+
+      <div>
+        <div class="alert-text">Loading alerts...</div>
+        <div class="alert-time">Please wait...</div>
       </div>
     </div>
+  </div>
+</div>
   </div>
 
   <div class="grid-2">
@@ -663,44 +656,93 @@ async function loadTruckStatus() {
     container.innerHTML = "";
 
     trucks.forEach(truck => {
+
+      // -----------------------------
+      // STATUS CONFIGURATION
+      // -----------------------------
       let statusText;
       let statusColor;
+      let statusIcon;
 
       switch (truck.truck_status) {
+
         case "IN_TRANSIT":
           statusText = "In Transit";
           statusColor = "var(--amber)";
+          statusIcon = "🟡";
           break;
 
         case "ARRIVED":
           statusText = "Arrived";
           statusColor = "var(--green)";
+          statusIcon = "🟢";
           break;
 
         case "SCHEDULED":
           statusText = "Scheduled";
           statusColor = "var(--muted)";
+          statusIcon = "🔵";
           break;
 
         default:
           statusText = truck.truck_status || "Unknown";
           statusColor = "var(--muted)";
+          statusIcon = "⚪";
       }
 
+      // -----------------------------
+      // TRUCK ID
+      // -----------------------------
       const truckId =
         `TRK-${String(truck.truck_id).padStart(3, "0")}`;
 
+      // -----------------------------
+      // SHIPMENT
+      // -----------------------------
       const shipment =
         truck.shipment_reference || "No shipment assigned";
 
-      const eta = truck.eta
-        ? new Date(truck.eta).toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false
-          })
-        : "—";
+      // -----------------------------
+      // ETA
+      // -----------------------------
+      let etaText = "—";
 
+      if (truck.eta) {
+
+        const etaDate = new Date(truck.eta);
+
+        etaText = etaDate.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        });
+      }
+
+      // -----------------------------
+      // SPEED
+      // -----------------------------
+      let speedText = "—";
+
+      if (truck.speed !== null && truck.speed !== undefined) {
+        speedText = `${truck.speed} km/h`;
+      }
+
+      // -----------------------------
+      // FINAL ETA DISPLAY
+      // -----------------------------
+      let rightText;
+
+      if (truck.truck_status === "ARRIVED") {
+        rightText = "Arrived";
+      } else if (truck.truck_status === "SCHEDULED") {
+        rightText = etaText;
+      } else {
+        rightText = etaText;
+      }
+
+      // -----------------------------
+      // CREATE TRUCK CARD
+      // -----------------------------
       const item = document.createElement("div");
 
       item.className = "truck-item";
@@ -709,14 +751,30 @@ async function loadTruckStatus() {
         <div class="truck-icon">🚛</div>
 
         <div class="truck-info">
-          <div class="truck-id">${truckId}</div>
-          <div class="truck-route">
-            Shipment ${shipment} · ${truck.truck_status}
+
+          <div class="truck-id">
+            ${truckId}
+            <span style="
+              font-size:10px;
+              color:${statusColor};
+              margin-left:6px;
+            ">
+              ${statusIcon} ${statusText}
+            </span>
           </div>
+
+          <div class="truck-route">
+            ${shipment}
+            · ${speedText}
+          </div>
+
         </div>
 
-        <div class="truck-eta" style="color:${statusColor}">
-          ${statusText === "Arrived" ? "Arrived" : eta}
+        <div
+          class="truck-eta"
+          style="color:${statusColor}"
+        >
+          ${rightText}
         </div>
       `;
 
@@ -724,21 +782,134 @@ async function loadTruckStatus() {
     });
 
   } catch (error) {
+
     console.error("Truck status error:", error);
 
     document.getElementById("truckFleetList").innerHTML = `
       <div class="truck-item">
+
         <div class="truck-icon">⚠️</div>
+
         <div class="truck-info">
-          <div class="truck-id">Unable to load trucks</div>
-          <div class="truck-route">Backend connection error</div>
+
+          <div class="truck-id">
+            Unable to load trucks
+          </div>
+
+          <div class="truck-route">
+            Backend connection error
+          </div>
+
         </div>
+
       </div>
     `;
   }
 }
 
 loadTruckStatus();
+async function loadAlerts() {
+  try {
+    const response = await fetch("http://localhost:5000/api/alerts");
+
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    const alerts = await response.json();
+
+    console.log("Alerts received:", alerts);
+
+    const container = document.getElementById("alertsList");
+
+    if (!container) {
+      throw new Error("alertsList element not found");
+    }
+
+    container.innerHTML = "";
+
+    alerts.forEach(alert => {
+
+      let dotColor;
+
+      switch (alert.severity) {
+        case "HIGH":
+          dotColor = "var(--red)";
+          break;
+
+        case "WARNING":
+          dotColor = "var(--amber)";
+          break;
+
+        case "INFO":
+          dotColor = "var(--accent)";
+          break;
+
+        default:
+          dotColor = "var(--muted)";
+      }
+
+      const time = alert.created_at
+        ? new Date(alert.created_at).toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+          })
+        : "—";
+
+      const item = document.createElement("div");
+
+      item.className = "alert-item";
+
+      item.innerHTML = `
+        <div class="alert-dot"
+             style="background:${dotColor}">
+        </div>
+
+        <div>
+          <div class="alert-text">
+            ${alert.message}
+          </div>
+
+          <div class="alert-time">
+            ${time}
+          </div>
+        </div>
+      `;
+
+      container.appendChild(item);
+    });
+
+  } catch (error) {
+
+    console.error("Alert loading error:", error);
+
+    const container = document.getElementById("alertsList");
+
+    if (container) {
+      container.innerHTML = `
+        <div class="alert-item">
+          <div class="alert-dot"
+               style="background:var(--red)">
+          </div>
+
+          <div>
+            <div class="alert-text">
+              Unable to load alerts
+            </div>
+
+            <div class="alert-time">
+              ${error.message}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+}
+
+loadAlerts();
+setInterval(loadAlerts, 30000);
 setInterval(loadTruckStatus, 30000);
 setInterval(loadDockStatus, 30000);
 setInterval(loadDashboardKPIs, 30000);
