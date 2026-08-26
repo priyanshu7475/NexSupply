@@ -284,26 +284,9 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem
   <div class="grid-21">
     <div class="card">
       <div class="card-title">Yard Map — Bay A</div>
-      <div class="yard-grid">
-        <div class="yard-slot occupied">A1 🚛</div>
-        <div class="yard-slot occupied">A2 🚛</div>
-        <div class="yard-slot available">A3</div>
-        <div class="yard-slot loading">A4 ⟳</div>
-        <div class="yard-slot available">A5</div>
-        <div class="yard-slot occupied">A6 🚛</div>
-        <div class="yard-slot available">B1</div>
-        <div class="yard-slot occupied">B2 🚛</div>
-        <div class="yard-slot loading">B3 ⟳</div>
-        <div class="yard-slot available">B4</div>
-        <div class="yard-slot occupied">B5 🚛</div>
-        <div class="yard-slot occupied">B6 🚛</div>
-        <div class="yard-slot available">C1</div>
-        <div class="yard-slot available">C2</div>
-        <div class="yard-slot occupied">C3 🚛</div>
-        <div class="yard-slot loading">C4 ⟳</div>
-        <div class="yard-slot available">C5</div>
-        <div class="yard-slot occupied">C6 🚛</div>
-      </div>
+      <div class="yard-grid" id="yardGrid">
+    <div class="yard-slot available">Loading...</div>
+</div>
       <div style="display:flex;gap:14px;font-size:12px;color:var(--muted)">
         <span style="color:var(--green)">■ Available (8)</span>
         <span style="color:var(--red)">■ Occupied (7)</span>
@@ -907,8 +890,86 @@ async function loadAlerts() {
     }
   }
 }
+async function loadYardStatus() {
+  try {
+    const response = await fetch("http://localhost:5000/api/yard");
 
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    const yards = await response.json();
+
+    const container = document.getElementById("yardGrid");
+
+    container.innerHTML = "";
+
+    const slotGroups = [
+      ["A1", "A2", "A3"],
+      ["A4", "A5", "A6"],
+      ["B1", "B2", "B3"],
+      ["B4", "B5", "B6"],
+      ["C1", "C2", "C3"],
+      ["C4", "C5", "C6"]
+    ];
+
+    yards.forEach((yard, index) => {
+
+      const slots = slotGroups[index];
+
+      const occupancyRate =
+        yard.capacity > 0
+          ? yard.occupancy / yard.capacity
+          : 0;
+
+      let occupiedSlots = Math.round(occupancyRate * 3);
+
+      if (yard.status === "FULL") {
+        occupiedSlots = 3;
+      }
+
+      slots.forEach((slotName, slotIndex) => {
+
+        const slot = document.createElement("div");
+
+        let statusClass;
+        let icon = "";
+
+        if (slotIndex < occupiedSlots) {
+          statusClass = "occupied";
+          icon = " 🚛";
+        } else {
+          statusClass = "available";
+        }
+
+        slot.className = `yard-slot ${statusClass}`;
+
+        slot.textContent = `${slotName}${icon}`;
+
+        slot.title =
+          `${yard.location_name} | ` +
+          `${yard.occupancy}/${yard.capacity} occupied | ` +
+          `${yard.status}`;
+
+        container.appendChild(slot);
+      });
+    });
+
+  } catch (error) {
+
+    console.error("Yard status error:", error);
+
+    document.getElementById("yardGrid").innerHTML = `
+      <div class="yard-slot occupied">
+        Unable to load yard
+      </div>
+    `;
+  }
+} 
+loadYardStatus();
 loadAlerts();
+
+setInterval(loadYardStatus, 30000);
 setInterval(loadAlerts, 30000);
 setInterval(loadTruckStatus, 30000);
 setInterval(loadDockStatus, 30000);
