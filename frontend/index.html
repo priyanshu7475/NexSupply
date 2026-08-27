@@ -64,7 +64,20 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem
 
 /* YARD MAP */
 .yard-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:12px}
-.yard-slot{height:44px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;border:1px solid transparent;cursor:default;transition:.15s}
+.yard-slot{
+    height:44px;
+    border-radius:6px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    font-size:11px;
+    font-weight:600;
+    border:1px solid transparent;
+    cursor:default;
+    transition:.15s
+}
 .yard-slot.occupied{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:var(--red)}
 .yard-slot.available{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.2);color:var(--green)}
 .yard-slot.loading{background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.3);color:var(--amber)}
@@ -290,9 +303,17 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem
 </div>
 
 <div style="display:flex;gap:14px;font-size:12px;color:var(--muted)">
-    <span style="color:var(--green)">■ Available</span>
-    <span style="color:var(--red)">■ Occupied</span>
-    <span style="color:var(--amber)">■ Full</span>
+  <span style="color:var(--green)">
+    ■ Available (<span id="availableCount">0</span>)
+  </span>
+
+  <span style="color:var(--red)">
+    ■ Occupied (<span id="occupiedCount">0</span>)
+  </span>
+
+  <span style="color:var(--amber)">
+    ■ Full (<span id="fullCount">0</span>)
+  </span>
 </div>
     </div>
     <div class="card">
@@ -904,7 +925,15 @@ async function loadYardStatus() {
 
     const container = document.getElementById("yardGrid");
 
+    if (!container) {
+      throw new Error("yardGrid element not found");
+    }
+
     container.innerHTML = "";
+
+    let availableCount = 0;
+    let occupiedCount = 0;
+    let fullCount = 0;
 
     yards.forEach(yard => {
 
@@ -913,14 +942,17 @@ async function loadYardStatus() {
       switch (yard.status) {
         case "AVAILABLE":
           statusClass = "available";
+          availableCount++;
           break;
 
         case "OCCUPIED":
           statusClass = "occupied";
+          occupiedCount++;
           break;
 
         case "FULL":
           statusClass = "loading";
+          fullCount++;
           break;
 
         default:
@@ -939,17 +971,27 @@ async function loadYardStatus() {
       container.appendChild(slot);
     });
 
+    // Update legend counts
+    document.getElementById("availableCount").textContent = availableCount;
+    document.getElementById("occupiedCount").textContent = occupiedCount;
+    document.getElementById("fullCount").textContent = fullCount;
+
   } catch (error) {
 
     console.error("Yard status error:", error);
 
-    document.getElementById("yardGrid").innerHTML = `
-      <div class="yard-slot occupied">
-        Unable to load yard
-      </div>
-    `;
+    const container = document.getElementById("yardGrid");
+
+    if (container) {
+      container.innerHTML = `
+        <div class="yard-slot occupied">
+          Unable to load yard
+        </div>
+      `;
+    }
   }
 }
+
 
 loadYardStatus();
 loadAlerts();
