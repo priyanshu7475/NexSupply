@@ -289,8 +289,8 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem
     </div>
     <div class="kpi">
       <div class="kpi-label">Avg Wait Time</div>
-      <div class="kpi-value">14m</div>
-      <div class="kpi-delta down">↓ 8m vs last week</div>
+      <div class="kpi-value" id="avgWaitTime">--</div>
+      <div class="kpi-delta neutral">Live from assignments</div>
     </div>
   </div>
 
@@ -364,13 +364,23 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:0 2rem
 
   <div class="grid-13">
     <div class="card">
-      <div class="card-title"><span>Dock Throughput</span></div>
-      <div class="progress-row"><div class="progress-label"><span>D-01 TN-2847</span><span>Delayed</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:45%"></div></div></div>
-      <div class="progress-row"><div class="progress-label"><span>D-02 MH-1134</span><span>100%</span></div><div class="progress-track"><div class="progress-fill fill-green" style="width:100%"></div></div></div>
-      <div class="progress-row"><div class="progress-label"><span>D-04 KA-0092</span><span>85%</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:85%"></div></div></div>
-      <div class="progress-row"><div class="progress-label"><span>D-05 GJ-5531</span><span>20%</span></div><div class="progress-track"><div class="progress-fill fill-blue" style="width:20%"></div></div></div>
-      <div class="progress-row"><div class="progress-label"><span>D-07 RJ-2290</span><span>Full</span></div><div class="progress-track"><div class="progress-fill fill-amber" style="width:100%"></div></div></div>
+  <div class="card-title">
+    <span>Dock Throughput</span>
+  </div>
+
+  <div id="dockThroughputList">
+    <div class="progress-row">
+      <div class="progress-label">
+        <span>Loading...</span>
+        <span>...</span>
+      </div>
+
+      <div class="progress-track">
+        <div class="progress-fill fill-blue" style="width:0%"></div>
+      </div>
     </div>
+  </div>
+</div>
     <div class="card">
       <div class="card-title"><span>Hourly Truck Arrivals</span></div>
       <div class="chart-wrap"><canvas id="arrivalChart"></canvas></div>
@@ -550,6 +560,8 @@ async function loadDashboardKPIs() {
 
         document.getElementById("yardUtilization").textContent =
             `${data.yardUtilization}%`;
+        document.getElementById("avgWaitTime").textContent =
+            `${data.avgWaitTime}m`;
 
     } catch (error) {
         console.error("Dashboard KPI error:", error);
@@ -1069,6 +1081,92 @@ async function loadArrivalChart() {
     console.error("Arrival chart error:", error);
   }
 }
+async function loadDockThroughput() {
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/docks/throughput"
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch dock throughput");
+    }
+
+    const docks = await response.json();
+
+    const container = document.getElementById("dockThroughputList");
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    docks.forEach(dock => {
+
+      const throughput = Number(dock.throughput) || 0;
+
+      let fillClass = "fill-blue";
+      let statusText = `${throughput}%`;
+
+      if (throughput >= 100) {
+        fillClass = "fill-green";
+        statusText = "100%";
+      } else if (dock.appointment_status === "IN_PROGRESS") {
+        fillClass = "fill-amber";
+        statusText = "Delayed";
+      }
+
+      const item = document.createElement("div");
+
+      item.className = "progress-row";
+
+      item.innerHTML = `
+        <div class="progress-label">
+          <span>
+            ${dock.dock_number}
+            ${dock.shipment_reference || ""}
+          </span>
+
+          <span>${statusText}</span>
+        </div>
+
+        <div class="progress-track">
+          <div
+            class="progress-fill ${fillClass}"
+            style="width:${throughput}%">
+          </div>
+        </div>
+      `;
+
+      container.appendChild(item);
+    });
+
+  } catch (error) {
+
+    console.error("Dock throughput error:", error);
+
+    const container =
+      document.getElementById("dockThroughputList");
+
+    if (container) {
+      container.innerHTML = `
+        <div class="progress-row">
+          <div class="progress-label">
+            <span>Unable to load throughput</span>
+            <span>—</span>
+          </div>
+
+          <div class="progress-track">
+            <div
+              class="progress-fill fill-amber"
+              style="width:0%">
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+}
+
+loadDockThroughput();
 
 
 function initDashboardCharts(){
@@ -1084,6 +1182,7 @@ setInterval(loadYardStatus, 30000);
 setInterval(loadAlerts, 30000);
 setInterval(loadTruckStatus, 30000);
 setInterval(loadDockStatus, 30000);
+setInterval(loadDockThroughput, 30000);
 setInterval(loadDashboardKPIs, 30000);
 </script>
 </body>
