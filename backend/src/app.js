@@ -6,6 +6,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const dockRoute = require("./routes/dockRoute");
 const alertRoute = require("./routes/alertRoute");
 const yardRoute = require("./routes/yardRoute");
+const appointmentRoute = require("./routes/appointmentRoute");
 
 const app = express();
 
@@ -23,5 +24,5 @@ app.use("/api/docks", dockRoute);
 app.use("/api/trucks", truckRoute);
 app.use("/api/alerts", alertRoute);
 app.use("/api/yard", yardRoute);
-
+app.use("/api/appointments", appointmentRoute);
 module.exports = app;
