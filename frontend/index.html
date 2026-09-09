@@ -527,13 +527,203 @@ function selectScenario(el,result){
 let dashInit=false,planInit=false;
 
 
+async function loadDemandForecastChart() {
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/planning/forecast"
+    );
 
+    if (!response.ok) {
+      throw new Error("Failed to fetch demand forecast");
+    }
+
+    const forecast = await response.json();
+
+    const labels = forecast.map((item, index) => `W${index + 1}`);
+
+    const forecastValues = forecast.map(
+      item => Number(item.forecast_quantity)
+    );
+
+    const actualValues = forecast.map(
+      item => Number(item.actual_quantity)
+    );
+
+    const ctx1 = document
+      .getElementById("demandChart")
+      .getContext("2d");
+
+    new Chart(ctx1, {
+      type: "line",
+
+      data: {
+        labels: labels,
+
+        datasets: [
+          {
+            label: "Forecast",
+            data: forecastValues,
+            borderColor: "rgba(79,142,247,1)",
+            backgroundColor: "rgba(79,142,247,0.1)",
+            tension: 0.4,
+            fill: true,
+            pointRadius: 3
+          },
+
+          {
+            label: "Actual",
+            data: actualValues,
+            borderColor: "rgba(34,197,94,1)",
+            backgroundColor: "rgba(34,197,94,0.1)",
+            tension: 0.4,
+            fill: false,
+            pointRadius: 3
+          }
+        ]
+      },
+
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+
+        plugins: {
+          legend: {
+            labels: {
+              color: "#6b7a99",
+              font: {
+                size: 11
+              }
+            }
+          }
+        },
+
+        scales: {
+          x: {
+            grid: {
+              color: "rgba(30,42,64,0.8)"
+            },
+            ticks: {
+              color: "#6b7a99",
+              font: {
+                size: 11
+              }
+            }
+          },
+
+          y: {
+            grid: {
+              color: "rgba(30,42,64,0.8)"
+            },
+            ticks: {
+              color: "#6b7a99",
+              font: {
+                size: 11
+              }
+            }
+          }
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Demand forecast chart error:", error);
+  }
+}
 function initPlanningCharts(){
   if(planInit)return;planInit=true;
-  const ctx1=document.getElementById('demandChart').getContext('2d');
-  new Chart(ctx1,{type:'line',data:{labels:['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'],datasets:[{label:'Forecast',data:[12400,14800,18500,17200,14000,15600,19200,21000,18400,16200,14800,13500],borderColor:'rgba(79,142,247,1)',backgroundColor:'rgba(79,142,247,0.1)',tension:.4,fill:true,pointRadius:3},{label:'Capacity',data:[20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000,20000],borderColor:'rgba(239,68,68,0.5)',borderDash:[5,5],tension:0,fill:false,pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#6b7a99',font:{size:11}}}},scales:{x:{grid:{color:'rgba(30,42,64,0.8)'},ticks:{color:'#6b7a99',font:{size:11}}},y:{grid:{color:'rgba(30,42,64,0.8)'},ticks:{color:'#6b7a99',font:{size:11}}}}}});
-  const ctx2=document.getElementById('balanceChart').getContext('2d');
-  new Chart(ctx2,{type:'bar',data:{labels:['W1','W2','W3','W4','W5'],datasets:[{label:'Supply',data:[13000,15500,19000,18000,14500],backgroundColor:'rgba(34,197,94,0.6)',borderRadius:4},{label:'Demand',data:[12400,14800,18500,17200,14000],backgroundColor:'rgba(79,142,247,0.6)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#6b7a99',font:{size:11}}}},scales:{x:{grid:{color:'rgba(30,42,64,0.8)'},ticks:{color:'#6b7a99',font:{size:11}}},y:{grid:{color:'rgba(30,42,64,0.8)'},ticks:{color:'#6b7a99',font:{size:11}}}}}});
+  loadDemandForecastChart();
+  async function loadBalanceChart() {
+    try {
+        const response = await fetch(
+            "http://localhost:5000/api/planning/supply-demand"
+        );
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch supply-demand data");
+        }
+
+        const data = await response.json();
+
+        const labels = data.map((item, index) => `W${index + 1}`);
+        const supply = data.map(item => Number(item.supply));
+        const demand = data.map(item => Number(item.demand));
+
+        const ctx2 = document
+            .getElementById("balanceChart")
+            .getContext("2d");
+
+        new Chart(ctx2, {
+            type: "bar",
+
+            data: {
+                labels: labels,
+
+                datasets: [
+                    {
+                        label: "Supply",
+                        data: supply,
+                        backgroundColor: "rgba(34,197,94,0.6)",
+                        borderRadius: 4
+                    },
+                    {
+                        label: "Demand",
+                        data: demand,
+                        backgroundColor: "rgba(79,142,247,0.6)",
+                        borderRadius: 4
+                    }
+                ]
+            },
+
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: "#6b7a99",
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                },
+
+                scales: {
+                    x: {
+                        grid: {
+                            color: "rgba(30,42,64,0.8)"
+                        },
+                        ticks: {
+                            color: "#6b7a99",
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: "rgba(30,42,64,0.8)"
+                        },
+                        ticks: {
+                            color: "#6b7a99",
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error("Supply-demand chart error:", error);
+    }
+}
+
+loadBalanceChart();
 }
 
 function updateClock(){
