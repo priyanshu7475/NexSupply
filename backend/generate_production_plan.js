@@ -5,8 +5,8 @@ const pool = require("./src/config/db");
 async function generateProductionPlan() {
     try {
         /*
-         * Read the weekly demand forecast.
-         * We already have 48 rows = 12 weeks × 4 SKUs.
+         * Read weekly demand forecast.
+         * 48 rows = 12 weeks × 4 SKUs
          */
         const forecastResult = await pool.query(`
             SELECT
@@ -21,11 +21,7 @@ async function generateProductionPlan() {
         let skipped = 0;
 
         /*
-         * Existing factory mapping:
-         * SKU 1 -> Factory 1
-         * SKU 2 -> Factory 1
-         * SKU 3 -> Factory 2
-         * SKU 4 -> Factory 2
+         * Factory mapping
          */
         const factoryMap = {
             1: 1,
@@ -40,36 +36,75 @@ async function generateProductionPlan() {
             const factoryId = factoryMap[skuId];
 
             if (!factoryId) {
-                console.log(`Skipping SKU ${skuId}: no factory mapping`);
+                console.log(
+                    `Skipping SKU ${skuId}: no factory mapping`
+                );
                 skipped++;
                 continue;
             }
 
+            const forecastDate = new Date(row.forecast_date);
+
             /*
-             * Don't create another production order if one
-             * already exists for this SKU and planning date.
+             * The forecast represents a WEEK.
+             *
+             * Existing production can happen on any day
+             * inside that 7-day period.
+             */
+            const weekStart = new Date(forecastDate);
+
+            const weekEnd = new Date(forecastDate);
+            weekEnd.setDate(weekEnd.getDate() + 7);
+
+            /*
+             * Calculate how much production already exists
+             * for this SKU during this forecast week.
              */
             const existing = await pool.query(
                 `
-                SELECT production_order_id
+                SELECT COALESCE(SUM(planned_quantity), 0) AS planned_quantity
                 FROM production_orders
                 WHERE sku_id = $1
-                  AND planned_date = $2
-                LIMIT 1;
+                  AND planned_date >= $2::date
+                  AND planned_date < $3::date;
                 `,
-                [skuId, row.forecast_date]
+                [
+                    skuId,
+                    weekStart.toISOString().split("T")[0],
+                    weekEnd.toISOString().split("T")[0]
+                ]
             );
 
-            if (existing.rows.length > 0) {
+            const existingQuantity =
+                Number(existing.rows[0].planned_quantity);
+
+            const forecastQuantity =
+                Number(row.forecast_quantity);
+
+            /*
+             * Only create the missing quantity.
+             */
+            const remainingQuantity =
+                forecastQuantity - existingQuantity;
+
+            if (remainingQuantity <= 0) {
                 skipped++;
+
+                console.log(
+                    `Skipped: ${row.forecast_date} | SKU ${skuId} | ` +
+                    `Forecast ${forecastQuantity} | ` +
+                    `Existing ${existingQuantity}`
+                );
+
                 continue;
             }
 
             /*
-             * Planned production is based on forecast demand.
-             * This gives the S&OP chart an actual supply plan.
+             * Put additional production at the beginning
+             * of the forecast week.
              */
-            const quantity = Number(row.forecast_quantity);
+            const plannedDate =
+                weekStart.toISOString().split("T")[0];
 
             await pool.query(
                 `
@@ -87,15 +122,19 @@ async function generateProductionPlan() {
                 [
                     factoryId,
                     skuId,
-                    quantity,
-                    row.forecast_date
+                    remainingQuantity,
+                    plannedDate
                 ]
             );
 
             inserted++;
 
             console.log(
-                `Created: ${row.forecast_date} | SKU ${skuId} | Qty ${quantity}`
+                `Created: ${plannedDate} | ` +
+                `SKU ${skuId} | ` +
+                `Qty ${remainingQuantity} | ` +
+                `Forecast ${forecastQuantity} | ` +
+                `Existing ${existingQuantity}`
             );
         }
 
